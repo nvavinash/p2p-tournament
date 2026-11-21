@@ -3,45 +3,51 @@ import axios from 'axios';
 
 const AuthContext = createContext();
 
+const API = 'http://localhost:5001/api';
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
-  // Configure axios defaults
-  if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete axios.defaults.headers.common['Authorization'];
-  }
-
+  // Set axios default auth header
   useEffect(() => {
-    const fetchUser = async () => {
-      if (token) {
-        try {
-          const res = await axios.get('http://localhost:5001/api/auth/me');
-          setUser(res.data);
-        } catch (error) {
-          console.error('Error fetching user', error);
-          logout();
-        }
-      }
-      setLoading(false);
-    };
-
-    fetchUser();
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
+    }
   }, [token]);
 
-  const login = async (email, password) => {
+  // Restore session on load
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await axios.get(`${API}/auth/me`);
+        setUser(res.data);
+      } catch (error) {
+        console.error('Session restore failed:', error.message);
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, [token]); // eslint-disable-line
+
+  const login = async (phone, pin) => {
     try {
-      const res = await axios.post('http://localhost:5001/api/auth/login', {
-        email,
-        password,
-      });
-      localStorage.setItem('token', res.data.token);
-      setToken(res.data.token);
-      setUser(res.data);
-      return { success: true };
+      const res = await axios.post(`${API}/auth/login`, { phone, pin });
+      const { token: newToken, ...userData } = res.data;
+      localStorage.setItem('token', newToken);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+      setToken(newToken);
+      setUser(userData);
+      return { success: true, user: userData };
     } catch (error) {
       return {
         success: false,
@@ -50,17 +56,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, playerId) => {
+  const register = async (formData) => {
     try {
-      const res = await axios.post('http://localhost:5001/api/auth/register', {
-        name,
-        email,
-        password,
-        playerId,
-      });
-      localStorage.setItem('token', res.data.token);
-      setToken(res.data.token);
-      setUser(res.data);
+      await axios.post(`${API}/auth/register`, formData);
       return { success: true };
     } catch (error) {
       return {
@@ -77,8 +75,18 @@ export const AuthProvider = ({ children }) => {
     delete axios.defaults.headers.common['Authorization'];
   };
 
+  const refreshUser = async () => {
+    try {
+      const res = await axios.get(`${API}/auth/me`);
+      setUser(res.data);
+      return res.data;
+    } catch (err) {
+      console.error('Refresh user failed:', err.message);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

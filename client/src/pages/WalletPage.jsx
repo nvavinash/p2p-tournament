@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Copy, CheckCircle, ArrowLeft } from "lucide-react";
 
 const API = "http://localhost:5001/api";
 
@@ -10,14 +11,14 @@ const Modal = ({ open, onClose, title, children }) => (
   <AnimatePresence>
     {open && (
       <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
       >
         <motion.div
-          className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl"
+          className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md shadow-2xl"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
@@ -31,40 +32,41 @@ const Modal = ({ open, onClose, title, children }) => (
   </AnimatePresence>
 );
 
-const StatusBadge = ({ transaction }) => {
-  if (transaction.editedByAdmin && transaction.type === "deposit") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
-        ✅ Deposit Done
-      </span>
-    );
-  }
-  if (transaction.editedByAdmin && transaction.type === "withdraw") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-400 border border-orange-500/30">
-        🏧 Withdraw Done
-      </span>
-    );
-  }
+const StatusBadge = ({ status, type }) => {
+  const configs = {
+    pending: { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/30", label: "⏳ Pending" },
+    approved: { bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/30", label: "✅ Approved" },
+    rejected: { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/30", label: "❌ Rejected" },
+    completed: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30", label: "✔ Completed" },
+    paid: { bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/30", label: "💸 Paid" },
+    failed: { bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/30", label: "✗ Failed" },
+    refunded: { bg: "bg-purple-500/20", text: "text-purple-400", border: "border-purple-500/30", label: "↩ Refunded" },
+  };
+  const cfg = configs[status] || { bg: "bg-zinc-700/60", text: "text-zinc-400", border: "border-zinc-600/30", label: status };
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-zinc-700/60 text-zinc-400 border border-zinc-600/30">
-      ⏳ Pending
+    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.text} border ${cfg.border}`}>
+      {cfg.label}
     </span>
   );
 };
 
+const typeEmoji = { deposit: "💰", withdraw: "🏧", match_entry: "🎮", match_refund: "↩", prize_credit: "🏆", admin_credit: "⬆️", admin_debit: "⬇️" };
+
 export default function WalletPage() {
-  const { user, token } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [balance, setBalance] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loadingBalance, setLoadingBalance] = useState(true);
+  const [settings, setSettings] = useState({});
+  const [copied, setCopied] = useState(false);
 
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   const [depositAmount, setDepositAmount] = useState("");
+  const [depositUtr, setDepositUtr] = useState("");
   const [depositFile, setDepositFile] = useState(null);
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositMsg, setDepositMsg] = useState("");
@@ -73,10 +75,16 @@ export default function WalletPage() {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [withdrawMsg, setWithdrawMsg] = useState("");
 
-  const fetchBalance = async () => {
+  const fetchData = async () => {
     try {
-      const res = await axios.get(`${API}/wallet/balance`);
-      setBalance(res.data.walletBalance);
+      const [balRes, txRes, settingsRes] = await Promise.all([
+        axios.get(`${API}/wallet/balance`),
+        axios.get(`${API}/wallet/transactions`),
+        axios.get(`${API}/settings/public`),
+      ]);
+      setBalance(balRes.data.walletBalance);
+      setTransactions(txRes.data);
+      setSettings(settingsRes.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -84,35 +92,37 @@ export default function WalletPage() {
     }
   };
 
-  const fetchTransactions = async () => {
-    try {
-      const res = await axios.get(`${API}/wallet/transactions`);
-      setTransactions(res.data);
-    } catch (err) {
-      console.error(err);
+  useEffect(() => { fetchData(); }, []);
+
+  const copyUpi = async () => {
+    if (settings.upiId) {
+      await navigator.clipboard.writeText(settings.upiId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  useEffect(() => {
-    fetchBalance();
-    fetchTransactions();
-  }, []);
-
   const handleDeposit = async (e) => {
     e.preventDefault();
+    if (!depositUtr.trim() || depositUtr.trim().length < 6) {
+      return setDepositMsg("UTR number is required (minimum 6 characters)");
+    }
     setDepositLoading(true);
     setDepositMsg("");
     try {
       const formData = new FormData();
       formData.append("amount", depositAmount);
-      formData.append("paymentProof", depositFile);
+      formData.append("utr", depositUtr.trim());
+      if (depositFile) formData.append("paymentProof", depositFile);
+
       await axios.post(`${API}/wallet/deposit-request`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setDepositMsg("✅ Deposit request submitted!");
+      setDepositMsg("✅ Deposit request submitted! Awaiting admin approval. Balance will update after approval.");
       setDepositAmount("");
+      setDepositUtr("");
       setDepositFile(null);
-      fetchTransactions();
+      fetchData();
     } catch (err) {
       setDepositMsg(err.response?.data?.message || "Failed to submit deposit");
     } finally {
@@ -125,16 +135,13 @@ export default function WalletPage() {
     setWithdrawLoading(true);
     setWithdrawMsg("");
     try {
-      await axios.post(`${API}/wallet/withdraw-request`, {
-        amount: withdrawAmount,
-      });
-      setWithdrawMsg("✅ Withdrawal request submitted!");
+      await axios.post(`${API}/wallet/withdraw-request`, { amount: withdrawAmount });
+      setWithdrawMsg("✅ Withdrawal request submitted! Awaiting admin approval.");
       setWithdrawAmount("");
-      fetchTransactions();
+      fetchData();
+      refreshUser?.();
     } catch (err) {
-      setWithdrawMsg(
-        err.response?.data?.message || "Failed to submit withdrawal",
-      );
+      setWithdrawMsg(err.response?.data?.message || "Failed to submit withdrawal");
     } finally {
       setWithdrawLoading(false);
     }
@@ -151,11 +158,9 @@ export default function WalletPage() {
             </h1>
             <p className="text-zinc-500 text-sm mt-1">Manage your funds</p>
           </div>
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="text-zinc-400 hover:text-white text-sm transition-colors"
-          >
-            ← Dashboard
+          <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1 text-zinc-400 hover:text-white text-sm transition-colors">
+            <ArrowLeft size={16} />
+            Dashboard
           </button>
         </div>
 
@@ -165,23 +170,16 @@ export default function WalletPage() {
           animate={{ opacity: 1, y: 0 }}
           className="relative bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700 rounded-2xl p-8 mb-6 overflow-hidden"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent pointer-events-none" />
-          <p className="text-zinc-400 text-sm uppercase tracking-widest mb-2">
-            Available Balance
-          </p>
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none" />
+          <p className="text-zinc-400 text-sm uppercase tracking-widest mb-2">Available Balance</p>
           {loadingBalance ? (
             <div className="h-12 w-40 bg-zinc-700 animate-pulse rounded-lg" />
           ) : (
             <p className="text-5xl font-bold text-white">
-              ₹
-              <span className="tabular-nums">
-                {balance?.toLocaleString("en-IN") ?? "—"}
-              </span>
+              ₹<span className="tabular-nums">{balance?.toLocaleString("en-IN") ?? "—"}</span>
             </p>
           )}
-          <p className="text-zinc-500 text-xs mt-3">
-            Balance updated by admin only
-          </p>
+          <p className="text-zinc-500 text-xs mt-3">Balance updated after admin approval only</p>
         </motion.div>
 
         {/* Action Buttons */}
@@ -189,22 +187,16 @@ export default function WalletPage() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              setDepositOpen(true);
-              setDepositMsg("");
-            }}
+            onClick={() => { setDepositOpen(true); setDepositMsg(""); }}
             className="flex flex-col items-center gap-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 hover:border-green-500/50 text-green-400 rounded-2xl py-6 font-semibold transition-all"
           >
             <span className="text-3xl">💰</span>
-            <span>Deposit</span>
+            <span>Add Money</span>
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              setWithdrawOpen(true);
-              setWithdrawMsg("");
-            }}
+            onClick={() => { setWithdrawOpen(true); setWithdrawMsg(""); }}
             className="flex flex-col items-center gap-2 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-500/50 text-orange-400 rounded-2xl py-6 font-semibold transition-all"
           >
             <span className="text-3xl">🏧</span>
@@ -214,9 +206,7 @@ export default function WalletPage() {
 
         {/* Transaction History */}
         <div>
-          <h2 className="text-lg font-semibold text-zinc-300 mb-4">
-            Transaction History
-          </h2>
+          <h2 className="text-lg font-semibold text-zinc-300 mb-4">Transaction History</h2>
           {transactions.length === 0 ? (
             <div className="text-center text-zinc-600 py-12 border border-zinc-800 rounded-2xl">
               No transactions yet
@@ -231,32 +221,21 @@ export default function WalletPage() {
                   className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">
-                      {t.type === "deposit" ? "💰" : "🏧"}
-                    </span>
+                    <span className="text-2xl">{typeEmoji[t.type] || "💫"}</span>
                     <div>
-                      <p className="text-sm font-medium text-white capitalize">
-                        {t.type}
-                      </p>
+                      <p className="text-sm font-medium text-white capitalize">{t.type?.replace(/_/g, " ")}</p>
                       <p className="text-xs text-zinc-500">
-                        {new Date(t.createdAt).toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                        {new Date(t.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                       </p>
+                      {t.utr && <p className="text-xs text-zinc-600 font-mono">UTR: {t.utr}</p>}
+                      {t.description && <p className="text-xs text-zinc-600 truncate max-w-[200px]">{t.description}</p>}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <p className="font-bold text-white">
-                      ₹{t.amount.toLocaleString("en-IN")}
+                    <p className={`font-bold ${["deposit", "admin_credit", "prize_credit", "match_refund"].includes(t.type) ? "text-green-400" : "text-orange-400"}`}>
+                      {["deposit", "admin_credit", "prize_credit", "match_refund"].includes(t.type) ? "+" : "-"}₹{t.amount?.toLocaleString("en-IN")}
                     </p>
-                    <StatusBadge transaction={t} />
-                    {t.editedByAdmin && (
-                      <span className="text-xs text-violet-400 font-medium">
-                        Updated by Admin
-                      </span>
-                    )}
+                    <StatusBadge status={t.status} type={t.type} />
                   </div>
                 </motion.div>
               ))}
@@ -266,119 +245,127 @@ export default function WalletPage() {
       </div>
 
       {/* Deposit Modal */}
-      <Modal
-        open={depositOpen}
-        onClose={() => setDepositOpen(false)}
-        title="💰 Deposit Request"
-      >
-        <form onSubmit={handleDeposit} className="space-y-4">
-          <div>
-            <label className="text-sm text-zinc-400 block mb-1">
-              Amount (₹)
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-              placeholder="e.g. 103"
-              required
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 transition-colors"
-            />
+      <Modal open={depositOpen} onClose={() => setDepositOpen(false)} title="💰 Add Money via PhonePe">
+        {settings.depositsEnabled === false ? (
+          <div className="text-center py-6">
+            <p className="text-red-400 font-medium">Deposits are temporarily disabled. Please check back later.</p>
           </div>
-          <div>
-            <label className="text-sm text-zinc-400 block mb-1">
-              Payment Screenshot
-            </label>
-            <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-zinc-700 hover:border-violet-500 rounded-lg cursor-pointer transition-colors bg-zinc-800/50">
+        ) : (
+          <form onSubmit={handleDeposit} className="space-y-4">
+            {/* UPI ID Display */}
+            <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+              <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Send payment to this UPI ID</p>
+              <div className="flex items-center justify-between">
+                <span className="text-white font-mono font-bold text-lg">{settings.upiId || "Loading..."}</span>
+                <button
+                  type="button"
+                  onClick={copyUpi}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 rounded-lg transition-colors text-zinc-300"
+                >
+                  {copied ? <CheckCircle size={14} className="text-green-400" /> : <Copy size={14} />}
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+
+            {/* Instructions */}
+            {settings.depositInstructions && (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+                <p className="text-xs text-blue-300 font-medium mb-1">📋 Payment Instructions</p>
+                <pre className="text-xs text-zinc-400 whitespace-pre-wrap font-sans">{settings.depositInstructions}</pre>
+              </div>
+            )}
+
+            <div>
+              <label className="text-sm text-zinc-400 block mb-1">Amount (₹) *</label>
               <input
-                type="file"
-                accept="image/*"
-                required
-                className="hidden"
-                onChange={(e) => setDepositFile(e.target.files[0])}
+                type="number" min="1" value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                placeholder="Enter amount" required
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 transition-colors"
               />
-              {depositFile ? (
-                <span className="text-green-400 text-sm">
-                  ✅ {depositFile.name}
-                </span>
-              ) : (
-                <>
-                  <span className="text-2xl mb-1">📷</span>
-                  <span className="text-zinc-500 text-sm">
-                    Click to upload screenshot
-                  </span>
-                </>
-              )}
-            </label>
-          </div>
-          {depositMsg && (
-            <p
-              className={`text-sm ${depositMsg.startsWith("✅") ? "text-green-400" : "text-red-400"}`}
-            >
-              {depositMsg}
-            </p>
-          )}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setDepositOpen(false)}
-              className="flex-1 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={depositLoading}
-              className="flex-1 py-2.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-semibold transition-colors disabled:opacity-50"
-            >
-              {depositLoading ? "Submitting..." : "Submit Request"}
-            </button>
-          </div>
-        </form>
+            </div>
+
+            <div>
+              <label className="text-sm text-zinc-400 block mb-1">UTR Number * <span className="text-red-400">(mandatory)</span></label>
+              <input
+                type="text" value={depositUtr}
+                onChange={(e) => setDepositUtr(e.target.value)}
+                placeholder="Enter UTR/transaction reference"
+                required minLength={6}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 transition-colors"
+              />
+              <p className="text-xs text-red-400 mt-1">Find UTR no. in PhonePe → Transaction History</p>
+            </div>
+
+            {/* <div>
+              <label className="text-sm text-zinc-400 block mb-1">Payment Screenshot (optional)</label>
+              <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-zinc-700 hover:border-green-500 rounded-lg cursor-pointer transition-colors bg-zinc-800/50">
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => setDepositFile(e.target.files[0])} />
+                {depositFile ? (
+                  <span className="text-green-400 text-sm">✅ {depositFile.name}</span>
+                ) : (
+                  <>
+                    <span className="text-xl mb-1">📷</span>
+                    <span className="text-zinc-500 text-xs">Click to upload screenshot</span>
+                  </>
+                )}
+              </label>
+            </div> */}
+
+            {depositMsg && (
+              <p className={`text-sm ${depositMsg.startsWith("✅") ? "text-green-400" : "text-red-400"}`}>{depositMsg}</p>
+            )}
+
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+              <p className="text-xs text-yellow-400">⚠️ Your balance will NOT increase automatically. Admin will verify your payment and approve within 24 hours.</p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setDepositOpen(false)} className="flex-1 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-white transition-colors">
+                Cancel
+              </button>
+              <button type="submit" disabled={depositLoading} className="flex-1 py-2.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-semibold transition-colors disabled:opacity-50">
+                {depositLoading ? "Submitting..." : "Submit Request"}
+              </button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* Withdraw Modal */}
-      <Modal
-        open={withdrawOpen}
-        onClose={() => setWithdrawOpen(false)}
-        title="🏧 Withdrawal Request"
-      >
+      <Modal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} title="🏧 Withdrawal Request">
         <form onSubmit={handleWithdraw} className="space-y-4">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-3">
+            <p className="text-xs text-zinc-500 mb-1">Withdrawal UPI ID</p>
+            <p className="text-white font-mono">{user?.upiId}</p>
+          </div>
+          <div className="bg-zinc-800 rounded-xl p-3">
+            <p className="text-xs text-zinc-500 mb-1">Available Balance</p>
+            <p className="text-green-400 font-bold">₹{balance?.toLocaleString("en-IN") ?? 0}</p>
+          </div>
           <div>
-            <label className="text-sm text-zinc-400 block mb-1">
-              Amount (₹)
-            </label>
+            <label className="text-sm text-zinc-400 block mb-1">Amount (₹)</label>
             <input
-              type="number"
-              min="1"
+              type="number" min={settings.minWithdrawal || 100} max={balance || 0}
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
-              placeholder="e.g. 500"
+              placeholder={`Min ₹${settings.minWithdrawal || 100}`}
               required
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 transition-colors"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 transition-colors"
             />
           </div>
           {withdrawMsg && (
-            <p
-              className={`text-sm ${withdrawMsg.startsWith("✅") ? "text-green-400" : "text-red-400"}`}
-            >
-              {withdrawMsg}
-            </p>
+            <p className={`text-sm ${withdrawMsg.startsWith("✅") ? "text-green-400" : "text-red-400"}`}>{withdrawMsg}</p>
           )}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            <p className="text-xs text-blue-300">💡 Admin will process your withdrawal manually and mark it as paid after transfer. Minimum: ₹{settings.minWithdrawal || 100}</p>
+          </div>
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setWithdrawOpen(false)}
-              className="flex-1 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors"
-            >
+            <button type="button" onClick={() => setWithdrawOpen(false)} className="flex-1 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-white transition-colors">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={withdrawLoading}
-              className="flex-1 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-semibold transition-colors disabled:opacity-50"
-            >
+            <button type="submit" disabled={withdrawLoading} className="flex-1 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-semibold transition-colors disabled:opacity-50">
               {withdrawLoading ? "Submitting..." : "Submit Request"}
             </button>
           </div>

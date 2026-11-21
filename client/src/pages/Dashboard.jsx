@@ -1,140 +1,142 @@
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import Button from "../components/ui/Button";
-import Card from "../components/ui/Card";
-import { User, Wallet, Shield, Mail, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
+import { LogOut, Wallet, Swords, LayoutDashboard, User, ScrollText, Shield } from "lucide-react";
+
+const NavItem = ({ icon: Icon, label, onClick, color = "text-zinc-400" }) => (
+  <motion.button
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={onClick}
+    className="flex items-center gap-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-5 text-left transition-all group w-full"
+  >
+    <div className={`text-2xl ${color}`}>
+      <Icon size={26} />
+    </div>
+    <div>
+      <p className={`font-semibold group-hover:text-white transition-colors ${color}`}>{label}</p>
+    </div>
+  </motion.button>
+);
+
+const StatCard = ({ label, value, color = "text-white", bg = "bg-zinc-900" }) => (
+  <div className={`${bg} border border-zinc-800 rounded-xl p-4 text-center`}>
+    <p className={`text-2xl font-bold ${color}`}>{value}</p>
+    <p className="text-zinc-500 text-xs mt-1">{label}</p>
+  </div>
+);
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const stats = [
-    {
-      label: "Player ID",
-      value: user?.playerId,
-      icon: User,
-      color: "text-blue-400",
-    },
-    {
-      label: "Wallet Balance",
-      value: `$${user?.walletBalance}`,
-      icon: Wallet,
-      color: "text-green-400",
-    },
-    {
-      label: "Email",
-      value: user?.email,
-      icon: Mail,
-      color: "text-purple-400",
-    },
-    {
-      label: "Role",
-      value: user?.role?.toUpperCase(),
-      icon: Shield,
-      color: "text-yellow-400",
-    },
-  ];
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-background p-4 font-sans text-text relative overflow-hidden">
-      {/* Subtle Background Grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-5xl z-10 mt-20"
-      >
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-heading font-bold text-white">
-              OPERATIVE DASHBOARD
-            </h1>
-            <p className="text-muted mt-2">
-              Welcome back, <span className="text-primary">{user?.name}</span>
-            </p>
-          </div>
-          <Button
-            onClick={logout}
-            variant="secondary"
-            className="flex items-center gap-2"
-          >
-            <LogOut size={18} />
-            LOGOUT
-          </Button>
+    <div className="min-h-screen bg-zinc-950 text-white">
+      {/* Header */}
+      <div className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-heading font-bold text-orange-400 tracking-widest">
+            P2P BATTLEGROUND
+          </h1>
         </div>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 text-zinc-400 hover:text-white text-sm transition-colors"
+        >
+          <LogOut size={16} />
+          Logout
+        </button>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <Card
-              key={index}
-              className="flex flex-col items-center text-center hover:border-primary/50 transition-colors"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <div
-                className={`p-4 rounded-full bg-surface/80 mb-4 ${stat.color}`}
-              >
-                <stat.icon size={32} />
-              </div>
-              <p className="text-sm text-muted font-bold tracking-wider mb-1 uppercase">
-                {stat.label}
-              </p>
-              <p className="text-xl font-heading font-semibold text-white break-all">
-                {stat.value}
-              </p>
-            </Card>
-          ))}
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Welcome */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h2 className="text-3xl font-heading font-bold text-white">
+            OPERATIVE DASHBOARD
+          </h2>
+          <p className="text-zinc-400 mt-1">
+            Welcome back,{" "}
+            <span className="text-orange-400 font-semibold">{user?.name}</span>
+            {user?.status === "banned" && (
+              <span className="ml-2 px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/30">
+                BANNED
+              </span>
+            )}
+          </p>
+        </motion.div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <StatCard
+            label="Wallet Balance"
+            value={`₹${(user?.walletBalance ?? 0).toLocaleString("en-IN")}`}
+            color="text-green-400"
+          />
+          <StatCard
+            label="Phone"
+            value={user?.phone || "—"}
+            color="text-blue-400"
+          />
+          <StatCard
+            label="UPI ID"
+            value={user?.upiId || "—"}
+            color="text-purple-400"
+          />
+          <StatCard
+            label="Account Status"
+            value={user?.status === "banned" ? "BANNED" : "ACTIVE"}
+            color={user?.status === "banned" ? "text-red-400" : "text-green-400"}
+          />
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+        <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-widest mb-4">
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <NavItem
+            icon={Wallet}
+            label="My Wallet"
             onClick={() => navigate("/wallet")}
-            className="flex items-center gap-4 bg-zinc-900 border border-zinc-800 hover:border-green-500/40 rounded-xl p-5 text-left transition-all group"
-          >
-            <div className="text-3xl">💰</div>
-            <div>
-              <p className="text-white font-semibold group-hover:text-green-400 transition-colors">
-                My Wallet
-              </p>
-              <p className="text-zinc-500 text-sm">
-                Balance: ₹{user?.walletBalance ?? 0}
-              </p>
-            </div>
-          </motion.button>
-
+            color="text-green-400"
+          />
+          <NavItem
+            icon={Swords}
+            label="Browse Matches"
+            onClick={() => navigate("/matches")}
+            color="text-orange-400"
+          />
+          <NavItem
+            icon={ScrollText}
+            label="Transaction History"
+            onClick={() => navigate("/transactions")}
+            color="text-blue-400"
+          />
+          <NavItem
+            icon={User}
+            label="My Profile"
+            onClick={() => navigate("/profile")}
+            color="text-purple-400"
+          />
           {user?.role === "admin" && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <NavItem
+              icon={Shield}
+              label="Admin Panel"
               onClick={() => navigate("/admin")}
-              className="flex items-center gap-4 bg-zinc-900 border border-zinc-800 hover:border-violet-500/40 rounded-xl p-5 text-left transition-all group"
-            >
-              <div className="text-3xl">🛡️</div>
-              <div>
-                <p className="text-white font-semibold group-hover:text-violet-400 transition-colors">
-                  Admin Panel
-                </p>
-                <p className="text-zinc-500 text-sm">
-                  Manage transactions & wallets
-                </p>
-              </div>
-            </motion.button>
+              color="text-violet-400"
+            />
           )}
         </div>
-
-        <Card className="min-h-[300px] flex items-center justify-center border-dashed border-2 border-white/5 bg-transparent">
-          <p className="text-muted text-lg">
-            Active Tournaments Module - Offline
-          </p>
-        </Card>
-      </motion.div>
+      </div>
     </div>
   );
 };
