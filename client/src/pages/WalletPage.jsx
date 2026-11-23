@@ -7,6 +7,8 @@ import { Copy, CheckCircle, ArrowLeft } from "lucide-react";
 
 const API = "http://localhost:5001/api";
 
+
+
 const Modal = ({ open, onClose, title, children }) => (
   <AnimatePresence>
     {open && (
@@ -31,6 +33,18 @@ const Modal = ({ open, onClose, title, children }) => (
     )}
   </AnimatePresence>
 );
+
+
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
 
 const StatusBadge = ({ status, type }) => {
   const configs = {
@@ -147,6 +161,12 @@ export default function WalletPage() {
     }
   };
 
+  const generatedUpiLink = settings.upiId
+    ? `upi://pay?pa=${settings.upiId}&pn=P2PTournament&cu=INR`
+    : "";
+
+  // const isMobile = useIsMobile();
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white px-4 py-8">
       <div className="max-w-2xl mx-auto">
@@ -253,7 +273,7 @@ export default function WalletPage() {
         ) : (
           <form onSubmit={handleDeposit} className="space-y-4">
             {/* UPI ID Display */}
-            <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+            {/* <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
               <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Send payment to this UPI ID</p>
               <div className="flex items-center justify-between">
                 <span className="text-white font-mono font-bold text-lg">{settings.upiId || "Loading..."}</span>
@@ -266,7 +286,22 @@ export default function WalletPage() {
                   {copied ? "Copied!" : "Copy"}
                 </button>
               </div>
-            </div>
+            </div> */}
+                <div className="flex flex-col items-center gap-5 py-4">
+                  <div className="text-center mb-2">
+                    <p className="text-sm text-zinc-500 mb-1">Amount to pay</p>
+                    {/* <p className="text-3xl font-black text-zinc-900">
+                      ₹{amount}
+                    </p> */}
+                  </div>
+                  <a
+                    href={generatedUpiLink}
+                    className="w-full text-center bg-slate-800 hover:bg-slate-900 text-white font-semibold py-4 px-6 rounded-xl transition-colors shadow-lg shadow-slate-900/20 text-lg flex items-center justify-center gap-2"
+                  >
+                  Pay Now via Any UPI
+                  </a>
+                 
+                </div>
 
             {/* Instructions */}
             {settings.depositInstructions && (

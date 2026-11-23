@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -14,7 +15,7 @@ const userSchema = new mongoose.Schema({
   },
   pin: {
     type: String,
-    required: true, // bcrypt hash of 6-digit PIN
+    required: true,
   },
   upiId: {
     type: String,
@@ -40,7 +41,8 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user',
   },
-  // Legacy fields kept for backward compatibility
+
+  // Legacy fields
   email: {
     type: String,
     sparse: true,
@@ -54,12 +56,12 @@ const userSchema = new mongoose.Schema({
     sparse: true,
     trim: true,
   },
+
 }, {
   timestamps: true,
 });
 
-// Indexes
-userSchema.index({ phone: 1 }, { unique: true });
+// Other indexes
 userSchema.index({ role: 1 });
 userSchema.index({ status: 1 });
 

@@ -36,8 +36,8 @@ export const AdminRoute = () => {
     );
   }
 
-  // if (!token) return <Navigate to="/login" state={{ from: location }} replace />;
-  // if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (!token) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
 
   return <Outlet />;
 };
