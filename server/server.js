@@ -68,8 +68,19 @@ app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/matches", require("./routes/matchRoutes"));
 app.use("/api/settings", require("./routes/settingsRoutes"));
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", message: "Server is healthy", timestamp: new Date().toISOString() });
+// app.get("/api/health", (req, res) => {
+//   res.json({ status: "ok", message: "Server is healthy", timestamp: new Date().toISOString() });
+// });
+
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "P2P Tournament API is running 🚀"
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
 });
 
 // ─── Error Handler ────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 const axios = require('axios');
 
-const API_URL = 'http://localhost:5001/api/auth';
+const API_URL = 'https://p2p-tournament.onrender.com/api/auth';
+
 
 const testAuth = async () => {
   try {
