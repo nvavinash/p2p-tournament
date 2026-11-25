@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Copy, CheckCircle, ArrowLeft } from "lucide-react";
 
-const API = import.meta.env.API_URL;
+const API = import.meta.env.VITE_API_URL;
 
 
 
