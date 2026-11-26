@@ -288,14 +288,14 @@ export default function WalletPage() {
               <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Send payment to this UPI ID</p>
               <div className="flex items-center justify-between">
                 <span className="text-white font-mono font-bold text-lg">{settings.upiId || "Loading..."}</span>
-                {/* <button
+                <button
                   type="button"
                   onClick={copyUpi}
                   className="flex items-center gap-1 text-xs px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 rounded-lg transition-colors text-zinc-300"
                 >
                   {copied ? <CheckCircle size={14} className="text-green-400" /> : <Copy size={14} />}
                   {copied ? "Copied!" : "Copy"}
-                </button> */}
+                </button>
               </div>
             </div>
                 <div className="flex flex-col items-center gap-5 py-4">
