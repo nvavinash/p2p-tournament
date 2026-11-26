@@ -165,11 +165,10 @@ export default function WalletPage() {
   //   ? `upi://pay?pa=${settings.upiId}&pn=P2PTournament&cu=INR`
   //   : "";
 
-  const generatedUpiLink = settings.upiId && Number(amount) > 0
+  const generatedUpiLink = settings.upiId 
   ? `upi://pay?${new URLSearchParams({
       pa: settings.upiId.trim(),
       pn: "P2PTournament",
-      am: Number(amount).toFixed(2),
       cu: "INR",
       tn: "Wallet Deposit",
       tr: `P2P${Date.now()}`
