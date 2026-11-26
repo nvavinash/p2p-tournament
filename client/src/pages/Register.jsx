@@ -134,7 +134,7 @@ const Register = () => {
             maxLength={6}
             inputMode="numeric"
           />
-          <Input
+          {/* <Input
             label="UPI ID"
             type="text"
             name="upiId"
@@ -145,7 +145,7 @@ const Register = () => {
           />
           <p className="text-xs text-zinc-500 -mt-1">
             Your UPI ID will be used for withdrawal payments
-          </p>
+          </p> */}
 
           <Button type="submit" className="w-full mt-2" disabled={loading}>
             {loading ? "REGISTERING..." : "INITIATE REGISTRATION"}

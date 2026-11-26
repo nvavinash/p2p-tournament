@@ -12,10 +12,10 @@ const generateToken = (id) => {
 // @access  Public
 const registerUser = async (req, res) => {
   try {
-    const { name, phone, pin, upiId } = req.body;
+    const { name, phone, pin } = req.body;
 
-    if (!name || !phone || !pin || !upiId) {
-      return res.status(400).json({ message: 'Please fill all fields: name, phone, PIN, UPI ID' });
+    if (!name || !phone || !pin) {
+      return res.status(400).json({ message: 'Please fill all fields: name, phone, PIN' });
     }
 
     // Validate phone
@@ -29,9 +29,9 @@ const registerUser = async (req, res) => {
     }
 
     // Validate UPI ID
-    if (!/^[\w.\-]+@[\w]+$/.test(upiId)) {
-      return res.status(400).json({ message: 'Invalid UPI ID format (e.g. name@upi)' });
-    }
+    // if (!/^[\w.\-]+@[\w]+$/.test(upiId)) {
+    //   return res.status(400).json({ message: 'Invalid UPI ID format (e.g. name@upi)' });
+    // }
 
     // Check duplicate phone
     const phoneExists = await User.findOne({ phone });
@@ -47,7 +47,7 @@ const registerUser = async (req, res) => {
       name,
       phone,
       pin: hashedPin,
-      upiId,
+      // upiId,
       role: 'user',
       status: 'active',
     });
@@ -91,7 +91,7 @@ const loginUser = async (req, res) => {
       _id: user._id,
       name: user.name,
       phone: user.phone,
-      upiId: user.upiId,
+      // upiId: user.upiId,
       walletBalance: user.walletBalance,
       role: user.role,
       status: user.status,

@@ -161,10 +161,22 @@ export default function WalletPage() {
     }
   };
 
-  const generatedUpiLink = settings.upiId
-    ? `upi://pay?pa=${settings.upiId}&pn=P2PTournament&cu=INR`
-    : "";
+  // const generatedUpiLink = settings.upiId
+  //   ? `upi://pay?pa=${settings.upiId}&pn=P2PTournament&cu=INR`
+  //   : "";
 
+  const generatedUpiLink = settings.upiId && Number(amount) > 0
+  ? `upi://pay?${new URLSearchParams({
+      pa: settings.upiId.trim(),
+      pn: "P2PTournament",
+      am: Number(amount).toFixed(2),
+      cu: "INR",
+      tn: "Wallet Deposit",
+      tr: `P2P${Date.now()}`
+    }).toString()}`
+  : "";
+
+  
   // const isMobile = useIsMobile();
 
   return (
@@ -273,33 +285,38 @@ export default function WalletPage() {
         ) : (
           <form onSubmit={handleDeposit} className="space-y-4">
             {/* UPI ID Display */}
-            {/* <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+            <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
               <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Send payment to this UPI ID</p>
               <div className="flex items-center justify-between">
                 <span className="text-white font-mono font-bold text-lg">{settings.upiId || "Loading..."}</span>
-                <button
+                {/* <button
                   type="button"
                   onClick={copyUpi}
                   className="flex items-center gap-1 text-xs px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 rounded-lg transition-colors text-zinc-300"
                 >
                   {copied ? <CheckCircle size={14} className="text-green-400" /> : <Copy size={14} />}
                   {copied ? "Copied!" : "Copy"}
-                </button>
+                </button> */}
               </div>
-            </div> */}
+            </div>
                 <div className="flex flex-col items-center gap-5 py-4">
-                  <div className="text-center mb-2">
-                    <p className="text-sm text-zinc-500 mb-1">Amount to pay</p>
+                  {/* <div className="text-center mb-2">
                     {/* <p className="text-3xl font-black text-zinc-900">
                       ₹{amount}
                     </p> */}
-                  </div>
+                  {/* </div>  */}
                   <a
-                    href={generatedUpiLink}
-                    className="w-full text-center bg-slate-800 hover:bg-slate-900 text-white font-semibold py-4 px-6 rounded-xl transition-colors shadow-lg shadow-slate-900/20 text-lg flex items-center justify-center gap-2"
-                  >
-                  Pay Now via Any UPI
-                  </a>
+                   href={generatedUpiLink || undefined}
+                    onClick={(e) => {
+                      if (!settings.upiId ) {
+                      e.preventDefault();
+      alert("Please enter a valid deposit amount");
+    }
+  }}
+  className="w-full text-center bg-slate-800 hover:bg-slate-900 text-white font-semibold py-4 px-6 rounded-xl"
+>
+  Pay Now via Any UPI
+</a>
                  
                 </div>
 
