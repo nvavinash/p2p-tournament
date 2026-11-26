@@ -72,7 +72,7 @@ export default function ProfilePage() {
 
         {/* Note */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <p className="text-zinc-500 text-sm">
+          <p className="text-zinc-500 text-xs">
             💡 To update your UPI ID or other account details, please contact support.
             Your wallet balance is managed by the platform and cannot be modified directly.
           </p>

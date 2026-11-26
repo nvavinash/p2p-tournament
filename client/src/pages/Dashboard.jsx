@@ -60,8 +60,8 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h2 className="text-3xl font-heading font-bold text-white">
-            OPERATIVE DASHBOARD
+          <h2 className="text-2xl font-heading font-bold text-white">
+           YOUR DASHBOARD
           </h2>
           <p className="text-zinc-400 mt-1">
             Welcome back,{" "}
@@ -86,11 +86,12 @@ const Dashboard = () => {
             value={user?.phone || "—"}
             color="text-blue-400"
           />
-          <StatCard
-            label="UPI ID"
-            value={user?.upiId || "—"}
-            color="text-purple-400"
-          />
+          
+          <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4 text-center">
+            <p className={`text-sm font-bold text-purple-400`}>{user?.upiId || "—"}</p>
+            <p className="text-zinc-500 text-xs mt-1">UPI ID</p>
+          </div>
+
           <StatCard
             label="Account Status"
             value={user?.status === "banned" ? "BANNED" : "ACTIVE"}
